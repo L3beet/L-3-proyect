@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>L-3 Operaciones</title>
+  <link rel="manifest" href="./manifest.json"/>
+  <link rel="apple-touch-icon" href="./icon.png"/>
+  <meta name="theme-color" content="#e50914"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="L-3"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+
+  <!-- FIREBASE -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGTSJRTYD7oqqbfxQs1Ueu5id5WNFaqN8",
+      authDomain: "l-3-proyect.firebaseapp.com",
+      projectId: "l-3-proyect",
+      storageBucket: "l-3-proyect.firebasestorage.app",
+      messagingSenderId: "663920127355",
+      appId: "1:663920127355:web:43b23162b6c8a1228a61de",
+      databaseURL: "https://l-3-proyect-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const mensajesRef = ref(db, 'chat_traileros');
+
+    onChildAdded(mensajesRef, function(snapshot) {
+      var data = snapshot.val();
+      var msgs = document.getElementById('traileroMessages');
+      var miNombre = localStorage.getItem('l3_nombre') || 'Yo';
+      var div = document.createElement('div');
+      div.className = data.nombre === miNombre ? 'tmsg yo' : 'tmsg otro';
+      if (data.nombre !== miNombre) {
+        var name = document.createElement('div');
+        name.className = 'tmsg-name';
+        name.textContent = data.nombre + ' 🚛';
+        div.appendChild(name);
+      }
+      div.appendChild(document.createTextNode(data.texto));
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    });
+
+    window.enviarTraileroFB = function() {
+      var input = document.getElementById('traileroInput');
+      var texto = input.value.trim();
+      if (!texto) return;
+      var nombre = localStorage.getItem('l3_nombre');
+      if (!nombre) {
+        nombre = prompt('¿Cómo te llaman en la carretera?') || 'Trailero';
+        localStorage.setItem('l3_nombre', nombre);
+      }
+      push(mensajesRef, {
+        nombre: nombre,
+        texto: texto,
+        hora: new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'})
+      });
+      input.value = '';
+    };
+  </script>
+
+  <!-- GOOGLE MAPS -->
+  <script>
+    var mapInstance = null;
+    var userMarker = null;
+    var MAPS_KEY = "AIzaSyAtULrF-W3w5hDVIkbkzpB3-ntvsfWt7-U";
+
+    function initMap() {
+      var nldCoords = { lat: 27.4765, lng: -99.5154 };
+      mapInstance = new google.maps.Map(document.getElementById('googleMap'), {
+        center: nldCoords,
+        zoom: 12,
+        mapTypeId: 'roadmap',
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#ffffff' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#000000' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#333333' }] },
+          { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#e50914' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d0d0d' }] },
+          { featureType: 'poi', stylers: [{ visibility: 'off' }] }
+        ]
+      });
+
+      var trafficLayer = new google.maps.TrafficLayer();
+      trafficLayer.setMap(mapInstance);
+
+      // Obtener ubicación real del usuario
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(pos) {
+          var userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          if (!userMarker) {
+            userMarker = new google.maps.Marker({
+              position: userPos,
+              map: mapInstance,
+              title: 'Tu ubicación',
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#e50914',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2
+              }
+            });
+          } else {
+            userMarker.setPosition(userPos);
+          }
+        }, null, { enableHighAccuracy: true });
+      }
+    }
+
+    function irACiudad(lat, lng, zoom, nombre) {
+      if (mapInstance) {
+        mapInstance.setCenter({ lat: lat, lng: lng });
+        mapInstance.setZoom(zoom || 11);
+        var st = document.getElementById('gpsStatus');
+        if (st) {
+          st.innerHTML = '📍 ' + (nombre || '') + ' &nbsp;|&nbsp; <button onclick="navegarADestino(' + lat + ',' + lng + ')" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:1px;cursor:pointer;">🚛 NAVEGAR</button>';
+        }
+      }
+    }
+
+    function navegarADestino(lat, lng) {
+      var st = document.getElementById('gpsStatus');
+      st.textContent = '📍 Obteniendo tu ubicación...';
+      if (!navigator.geolocation) {
+        // Sin GPS — navegar desde NLD
+        window.open('https://www.google.com/maps/dir/Nuevo+Laredo,+Tamaulipas/' + lat + ',' + lng + '/@' + lat + ',' + lng + ',8z/data=!3m1!4b1!4m2!4m1!3e1', '_blank');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          var url = 'https://www.google.com/maps/dir/' + 
+            pos.coords.latitude + ',' + pos.coords.longitude + 
+            '/' + lat + ',' + lng + 
+            '/@' + lat + ',' + lng + ',8z/data=!3m1!4b1!4m2!4m1!3e0';
+          window.open(url, '_blank');
+          st.textContent = '✅ Abriendo navegación...';
+        },
+        function() {
+          window.open('https://www.google.com/maps/dir/Nuevo+Laredo,+Tamaulipas/' + lat + ',' + lng + '/@' + lat + ',' + lng + ',8z/data=!3m1!4b1!4m2!4m1!3e1', '_blank');
+          st.textContent = '⚠️ Sin GPS · Navegando desde NLD';
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    }
+
+    function setPais(pais, btn) {
+      document.querySelectorAll('.pais-btn').forEach(function(b) {
+        b.style.background = 'var(--card)';
+        b.style.color = 'var(--muted)';
+        b.style.borderColor = 'var(--border)';
+      });
+      btn.style.background = 'var(--red)';
+      btn.style.color = '#fff';
+      document.getElementById('ciudades-mx').style.display = pais === 'mx' ? 'grid' : 'none';
+      document.getElementById('ciudades-usa').style.display = pais === 'usa' ? 'grid' : 'none';
+    }
+
+    function filtrarCiudades() {
+      var texto = document.getElementById('buscadorCiudad').value.toLowerCase();
+      document.querySelectorAll('.ciudad-chip').forEach(function(chip) {
+        if (chip.textContent.toLowerCase().includes(texto)) {
+          chip.style.display = 'block';
+        } else {
+          chip.style.display = 'none';
+        }
+      });
+      if (texto === '') {
+        document.querySelectorAll('.ciudad-chip').forEach(function(chip) {
+          chip.style.display = 'block';
+        });
+      }
+    }
+
+    function centrarUbicacion() {
+      var st = document.getElementById('gpsStatus');
+      st.textContent = '📍 Obteniendo tu ubicación...';
+      if (!navigator.geolocation) {
+        st.textContent = '❌ GPS no disponible';
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          var lat = pos.coords.latitude;
+          var lng = pos.coords.longitude;
+          if (mapInstance) {
+            mapInstance.setCenter({ lat: lat, lng: lng });
+            mapInstance.setZoom(14);
+          }
+          st.textContent = '✅ Ubicación encontrada';
+        },
+        function() {
+          st.textContent = '⚠️ No se pudo obtener ubicación';
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    }
+
+    window.initMap = initMap;
+  </script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAtULrF-W3w5hDVIkbkzpB3-ntvsfWt7-U&callback=initMap&libraries=places"></script>
+
+  <style>
+    :root {
+      --red: #e50914;
+      --dark: #0d0d0d;
+      --card: #262626;
+      --border: #333;
+      --text: #ffffff;
+      --muted: #888;
+      --green: #2ecc71;
+      --yellow: #f1c40f;
+      --accent: #f5a623;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .header { width: 100%; background: #000; border-bottom: 2px solid var(--red); padding: 14px 20px 0; text-align: center; }
+    .header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px; }
+    .header h1 span { color: var(--red); }
+    .tabs { width: 100%; display: flex; justify-content: space-around; margin-top: 12px; border-top: 1px solid var(--border); }
+    .tab { flex: 1; padding: 10px 4px; text-align: center; font-size: 10px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: bold; letter-spacing: 1px; transition: all 0.2s; }
+    .tab.active { color: var(--red); border-bottom-color: var(--red); }
+    .section { display: none; width: 100%; max-width: 480px; padding: 14px; flex-direction: column; gap: 12px; padding-bottom: 30px; }
+    .section.active { display: flex; animation: fade 0.3s ease; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .card { background: var(--card); border-radius: 12px; padding: 16px; }
+    .section-title { font-size: 11px; letter-spacing: 2px; color: var(--red); margin: 4px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+    .country-tag { font-size: 10px; color: #555; margin: 8px 0 6px; font-family: 'IBM Plex Mono', monospace; }
+    .ruta-btn { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); margin-bottom: 8px; cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden; }
+    .ruta-btn::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--red); transform: scaleY(0); transition: transform 0.18s; }
+    .ruta-btn:active::before { transform: scaleY(1); }
+    .ruta-btn:active { border-color: var(--red); }
+    .ruta-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+    .ruta-title { font-size: 14px; font-weight: 700; display: block; }
+    .ruta-sub { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+    .ruta-arrow { margin-left: auto; color: var(--muted); }
+    .gps-status { font-size: 10px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; text-align: center; padding: 6px; }
+    .ciudad-chip { padding: 7px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+    .ciudad-chip.active { border-color: var(--red); color: var(--red); }
+    .calc-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: 'IBM Plex Mono', monospace; outline: none; margin-bottom: 8px; transition: border-color 0.15s; }
+    .calc-input:focus { border-color: var(--red); }
+    .calc-btn { width: 100%; padding: 14px; background: var(--red); color: white; border: none; border-radius: 10px; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; cursor: pointer; }
+    .calc-result { display: none; margin-top: 12px; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 2; }
+    .calc-result.show { display: block; }
+    .chat-box { background: var(--dark); border: 1px solid var(--border); border-radius: 12px; height: 280px; display: flex; flex-direction: column; margin-bottom: 12px; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .chat-messages::-webkit-scrollbar { width: 3px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
+    .mensaje-usuario { align-self: flex-end; background: var(--red); color: #fff; padding: 10px 15px; border-radius: 15px 15px 0 15px; max-width: 85%; font-size: 13px; line-height: 1.4; }
+    .mensaje-ia { align-self: flex-start; background: #333; color: #eee; padding: 10px 15px; border-radius: 15px 15px 15px 0; max-width: 85%; font-size: 13px; line-height: 1.4; border-left: 3px solid var(--red); }
+    .chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+    .chat-input { flex: 1; background: #222; border: 1px solid var(--border); border-radius: 30px; padding: 10px 16px; color: var(--text); font-size: 13px; outline: none; }
+    .chat-input:focus { border-color: var(--red); }
+    .chat-send { background: var(--red); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    .chat-send:disabled { opacity: 0.5; }
+    .trailero-box { background: var(--dark); border: 1px solid var(--border); border-radius: 12px; height: 220px; display: flex; flex-direction: column; }
+    .trailero-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .tmsg { font-size: 12px; padding: 8px 12px; border-radius: 10px; max-width: 85%; line-height: 1.4; }
+    .tmsg.otro { background: var(--card); border: 1px solid var(--border); align-self: flex-start; border-radius: 4px 10px 10px 10px; }
+    .tmsg.yo { background: var(--red); color: #fff; align-self: flex-end; border-radius: 10px 4px 10px 10px; }
+    .tmsg-name { font-size: 9px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-bottom: 3px; }
+    .sos-btn { display: block; width: 100%; padding: 22px; background: var(--red); color: #fff; border: none; border-radius: 14px; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; text-align: center; text-decoration: none; cursor: pointer; animation: glow 2s infinite; margin-bottom: 12px; }
+    @keyframes glow { 0% { box-shadow: 0 0 0 0 rgba(229,9,20,0.6); } 70% { box-shadow: 0 0 0 14px rgba(229,9,20,0); } 100% { box-shadow: 0 0 0 0 rgba(229,9,20,0); } }
+    .footer-txt { padding: 20px 16px; font-size: 10px; color: #444; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <div class="header" style="width:100%;">
+    <h1>L<span>-</span>3 OPERACIONES</h1>
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('gps',this)">GPS</div>
+      <div class="tab" onclick="showTab('clima',this)">CLIMA</div>
+      <div class="tab" onclick="showTab('calc',this)">CALC</div>
+      <div class="tab" onclick="showTab('chat',this)">CHAT</div>
+      <div class="tab" onclick="showTab('notas',this)">🗒️</div>
+      <div class="tab" onclick="showTab('sos',this)">SOS</div>
+    </div>
+  </div>
+
+  <!-- GPS -->
+  <div class="section active" id="tab-gps">
+
+    <!-- CIUDADES RÁPIDAS -->
+    <div>
+      <div class="section-title">🏙️ IR A CIUDAD</div>
+
+      <!-- BUSCADOR -->
+      <div style="position:relative;margin-bottom:12px;">
+        <input type="text" id="buscadorCiudad" placeholder="🔍 Buscar ciudad..." oninput="filtrarCiudades()" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:13px;outline:none;font-family:'IBM Plex Mono',monospace;"/>
+      </div>
+
+      <!-- SELECTOR PAÍS -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button onclick="setPais('mx',this)" style="flex:1;padding:10px;background:var(--red);border:none;border-radius:10px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">🇲🇽 MÉXICO</button>
+        <button onclick="setPais('usa',this)" style="flex:1;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">🇺🇸 USA</button>
+      </div>
+
+      <!-- CIUDADES MÉXICO -->
+      <div id="ciudades-mx" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="ciudad-chip" onclick="irACiudad(27.4765,-99.5154,12,'Nvo. Laredo')" style="text-align:center;padding:10px;">🇲🇽 Nvo. Laredo</div>
+        <div class="ciudad-chip" onclick="irACiudad(25.6866,-100.3161,11,'Monterrey')" style="text-align:center;padding:10px;">🏙️ Monterrey</div>
+        <div class="ciudad-chip" onclick="irACiudad(23.6489,-100.6397,11,'Matehuala')" style="text-align:center;padding:10px;">🛣️ Matehuala</div>
+        <div class="ciudad-chip" onclick="irACiudad(25.4232,-100.9940,11,'Saltillo')" style="text-align:center;padding:10px;">🏜️ Saltillo</div>
+        <div class="ciudad-chip" onclick="irACiudad(27.0341,-99.8536,12,'Colombia NL')" style="text-align:center;padding:10px;">🌉 Colombia NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(27.2447,-100.1308,12,'Anáhuac NL')" style="text-align:center;padding:10px;">🏘️ Anáhuac NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(27.0225,-100.5142,12,'Lampazos NL')" style="text-align:center;padding:10px;">🛣️ Lampazos NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(27.8489,-101.1197,12,'Sabinas Coch')" style="text-align:center;padding:10px;">⛽ Sabinas Coch</div>
+        <div class="ciudad-chip" onclick="irACiudad(26.4925,-100.1367,12,'Vallecillo NL')" style="text-align:center;padding:10px;">🏘️ Vallecillo NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(26.6039,-100.4994,12,'Bustamante NL')" style="text-align:center;padding:10px;">🌵 Bustamante NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(26.8386,-100.6628,12,'Candela NL')" style="text-align:center;padding:10px;">🏘️ Candela NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(26.9167,-101.4167,11,'Monclova')" style="text-align:center;padding:10px;">🏭 Monclova Coch</div>
+        <div class="ciudad-chip" onclick="irACiudad(27.6167,-100.7167,12,'Villa Unión')" style="text-align:center;padding:10px;">🏘️ Villa Unión</div>
+        <div class="ciudad-chip" onclick="irACiudad(25.7789,-100.1864,12,'Apodaca NL')" style="text-align:center;padding:10px;">🏙️ Apodaca NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(25.7997,-100.3183,12,'Escobedo NL')" style="text-align:center;padding:10px;">🏙️ Escobedo NL</div>
+        <div class="ciudad-chip" onclick="irACiudad(25.7539,-100.5142,12,'San Pedro NL')" style="text-align:center;padding:10px;">🏙️ San Pedro NL</div>
+      </div>
+
+      <!-- CIUDADES USA -->
+      <div id="ciudades-usa" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="ciudad-chip" onclick="irACiudad(27.5035,-99.5075,12,'Laredo TX')" style="text-align:center;padding:10px;">🇺🇸 Laredo TX</div>
+        <div class="ciudad-chip" onclick="irACiudad(29.4241,-98.4936,11,'San Antonio TX')" style="text-align:center;padding:10px;">🇺🇸 San Antonio</div>
+        <div class="ciudad-chip" onclick="irACiudad(29.7604,-95.3698,11,'Houston TX')" style="text-align:center;padding:10px;">🛣️ Houston</div>
+        <div class="ciudad-chip" onclick="irACiudad(32.7767,-96.7970,11,'Dallas TX')" style="text-align:center;padding:10px;">🏙️ Dallas</div>
+      </div>
+
+      <!-- GPS BOTÓN -->
+      <button onclick="centrarUbicacion()" style="width:100%;padding:14px;background:var(--red);border:none;border-radius:12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;margin-bottom:8px;">📍 MI UBICACIÓN AHORA</button>
+      <div class="gps-status" id="gpsStatus">Toca una ciudad o activa tu ubicación</div>
+    </div>
+
+    <!-- MAPA INTEGRADO -->
+    <div>
+      <div class="section-title">🗺️ MAPA + TRÁFICO EN VIVO</div>
+      <div id="googleMap" style="width:100%;height:350px;border-radius:12px;border:1px solid var(--border);overflow:hidden;"></div>
+      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;margin-top:8px;">📍 Tu ubicación en rojo · Tráfico en tiempo real</div>
+    </div>
+
+    <!-- CÁMARAS -->
+    <div>
+      <div class="section-title">📸 CÁMARAS PUENTES</div>
+      <a href="https://www.cityoflaredo.com/services/bridge-cameras" target="_blank" class="ruta-btn" style="margin-bottom:0;">
+        <span class="ruta-icon">📸</span>
+        <div><span class="ruta-title">Cámaras Puentes Oficiales</span><span class="ruta-sub">Ciudad de Laredo · En vivo</span></div>
+        <span class="ruta-arrow">›</span>
+      </a>
+    </div>
+
+    <!-- PARADAS -->
+    <div>
+      <div class="section-title">⛽ PARADAS CERCANAS</div>
+      <div class="ruta-btn" onclick="buscarCerca('gasolineras diesel')">
+        <span class="ruta-icon">⛽</span>
+        <div><span class="ruta-title">Gasolineras Cercanas</span><span class="ruta-sub">Cerca de tu ubicación</span></div>
+        <span class="ruta-arrow">›</span>
+      </div>
+      <div class="ruta-btn" onclick="buscarCerca('restaurantes paraderos camioneros')" style="margin-bottom:0;">
+        <span class="ruta-icon">🍽️</span>
+        <div><span class="ruta-title">Comida / Paraderos</span><span class="ruta-sub">Cerca de tu ubicación</span></div>
+        <span class="ruta-arrow">›</span>
+      </div>
+      <div class="gps-status" id="gpsStatus">📍 Toca una ciudad o destino</div>
+    </div>
+
+  </div>
+
+  <!-- CLIMA -->
+  <div class="section" id="tab-clima">
+    <div class="section-title">🌤️ CLIMA EN TIEMPO REAL</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <div class="ciudad-chip active" onclick="setClima(this,'nld')">🇲🇽 NLD</div>
+      <div class="ciudad-chip" onclick="setClima(this,'mty')">🏙️ MTY</div>
+      <div class="ciudad-chip" onclick="setClima(this,'mat')">🛣️ Matehuala</div>
+      <div class="ciudad-chip" onclick="setClima(this,'salt')">🏜️ Saltillo</div>
+      <div class="ciudad-chip" onclick="setClima(this,'col')">🌉 Colombia NL</div>
+      <div class="ciudad-chip" onclick="setClima(this,'ana')">🏘️ Anáhuac</div>
+      <div class="ciudad-chip" onclick="setClima(this,'lamp')">🛣️ Lampazos</div>
+      <div class="ciudad-chip" onclick="setClima(this,'sab')">⛽ Sabinas</div>
+      <div class="ciudad-chip" onclick="setClima(this,'monc')">🏭 Monclova</div>
+      <div class="ciudad-chip" onclick="setClima(this,'apo')">🏙️ Apodaca</div>
+      <div class="ciudad-chip" onclick="setClima(this,'lrd')">🇺🇸 Laredo TX</div>
+      <div class="ciudad-chip" onclick="setClima(this,'sa')">🇺🇸 San Antonio</div>
+      <div class="ciudad-chip" onclick="setClima(this,'hou')">🛣️ Houston</div>
+      <div class="ciudad-chip" onclick="setClima(this,'dal')">🏙️ Dallas</div>
+    </div>
+    <div class="card" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div id="clima-ciudad-nombre" style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--red);">NVO LAREDO / LAREDO TX</div>
+      <div id="clima-loading" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);">Cargando clima...</div>
+      <div id="clima-data" style="display:none;width:100%;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+          <div id="clima-temp" style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:-1px;line-height:1;">--°</div>
+          <div>
+            <div id="clima-desc" style="font-size:14px;font-weight:600;margin-bottom:4px;">--</div>
+            <div id="clima-viento" style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">💨 Viento: --</div>
+            <div id="clima-humedad" style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">💧 Humedad: --</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div id="clima-max" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;">MAX: --°</div>
+          <div id="clima-min" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;">MIN: --°</div>
+        </div>
+      </div>
+      <div id="clima-error" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);">⚠️ Sin conexión · Verifica tu señal</div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);text-align:center;font-family:'IBM Plex Mono',monospace;">✅ Datos en tiempo real · wttr.in</div>
+  </div>
+    <div class="card" style="flex-direction:column;align-items:flex-start;gap:10px;">
+      <div id="clima-ciudad-nombre" style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--red);">NVO LAREDO / LAREDO TX</div>
+      <div id="clima-loading" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);">Cargando clima...</div>
+      <div id="clima-data" style="display:none;width:100%;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+          <div id="clima-temp" style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:-1px;line-height:1;">--°</div>
+          <div>
+            <div id="clima-desc" style="font-size:14px;font-weight:600;margin-bottom:4px;">--</div>
+            <div id="clima-viento" style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">💨 Viento: --</div>
+            <div id="clima-humedad" style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">💧 Humedad: --</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div id="clima-max" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;">MAX: --°</div>
+          <div id="clima-min" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;">MIN: --°</div>
+        </div>
+      </div>
+      <div id="clima-error" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);">⚠️ Sin conexión · Verifica tu señal</div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);text-align:center;font-family:'IBM Plex Mono',monospace;">✅ Datos en tiempo real · wttr.in</div>
+  </div>
+
+  <!-- CALCULADORA -->
+  <div class="section" id="tab-calc">
+    <div class="section-title">🧮 CALCULADORA DE GANANCIA</div>
+    <input class="calc-input" type="number" id="monto" placeholder="💵 Monto total del viaje ($)"/>
+    <input class="calc-input" type="number" id="diesel" placeholder="⛽ Gasto de diesel ($)"/>
+    <input class="calc-input" type="number" id="casetas" placeholder="🛣️ Casetas y peajes ($)"/>
+    <input class="calc-input" type="number" id="km" placeholder="📍 KM del viaje (opcional)"/>
+    <input class="calc-input" type="number" id="rend" placeholder="🔧 Rendimiento KM/L (opc.)"/>
+    <button class="calc-btn" onclick="calcular()">CALCULAR GANANCIA</button>
+    <div class="calc-result" id="calcResult"></div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="section" id="tab-chat">
+    <div class="section-title">🤖 ASISTENTE IA · JIMENA</div>
+    <div class="chat-box">
+      <div class="chat-messages" id="iaMessages"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="iaInput" type="text" placeholder="Pregunta sobre rutas, tráfico, diesel..."/>
+        <button class="chat-send" id="iaBtn" onclick="enviarIA()">➤</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;margin-bottom:16px;">🤖 IA trailera · Powered by Gemini</div>
+
+    <div class="section-title">🚛 CHAT TRAILEROS · EN VIVO</div>
+    <div class="trailero-box">
+      <div class="trailero-messages" id="traileroMessages">
+        <div class="tmsg otro" style="text-align:center;color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace;">Conectando chat en vivo... 📡</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="traileroInput" type="text" placeholder="Reporta un aviso a tus colegas..." onkeydown="if(event.key==='Enter')enviarTraileroFB()"/>
+        <button class="chat-send" onclick="enviarTraileroFB()">➤</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--green);font-family:'IBM Plex Mono',monospace;text-align:center;">✅ Chat en tiempo real · Firebase</div>
+  </div>
+
+  <!-- NOTAS -->
+  <div class="section" id="tab-notas">
+    <div class="section-title">🗒️ MIS NOTAS</div>
+    <div class="card">
+      <input type="text" id="notaTitulo" placeholder="📌 Título de la nota..." style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;outline:none;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;"/>
+      <textarea id="notaTexto" placeholder="Escribe tu nota aquí... hora de entrega, instrucciones, contactos..." style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;outline:none;margin-bottom:8px;font-family:'IBM Plex Sans',sans-serif;height:100px;resize:none;"></textarea>
+      <button onclick="guardarNota()" style="width:100%;padding:12px;background:var(--red);border:none;border-radius:8px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;">💾 GUARDAR NOTA</button>
+    </div>
+    <div class="section-title">📋 NOTAS GUARDADAS</div>
+    <div id="listaNotas" style="display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
+  <!-- SOS -->
+  <div class="section" id="tab-sos">
+    <div class="section-title">⚠️ EMERGENCIAS</div>
+    <a href="tel:911" class="sos-btn">⚠️ AUXILIO · 911</a>
+    <a href="tel:078" class="ruta-btn">
+      <span class="ruta-icon">🛣️</span>
+      <div><span class="ruta-title">Ángeles Verdes</span><span class="ruta-sub">Asistencia carretera MX · 078</span></div>
+      <span class="ruta-arrow">›</span>
+    </a>
+    <a href="tel:18007289727" class="ruta-btn">
+      <span class="ruta-icon">🇺🇸</span>
+      <div><span class="ruta-title">Highway Patrol USA</span><span class="ruta-sub">1-800-728-9727</span></div>
+      <span class="ruta-arrow">›</span>
+    </a>
+    <a href="https://www.google.com/maps/search/hospital" target="_blank" class="ruta-btn" style="margin-bottom:0;">
+      <span class="ruta-icon">🏥</span>
+      <div><span class="ruta-title">Hospital Cercano</span><span class="ruta-sub">Buscar en Maps</span></div>
+      <span class="ruta-arrow">›</span>
+    </a>
+  </div>
+
+  <div class="footer-txt">L-3 LOGÍSTICA · NVO. LAREDO · GUERREROS DEL ASFALTO 🛣️</div>
+
+  <script>
+    function showTab(name, el) {
+      document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.getElementById('tab-' + name).classList.add('active');
+      el.classList.add('active');
+    }
+
+    function navegar(destino) {
+      var st = document.getElementById('gpsStatus');
+      st.textContent = '📍 Obteniendo ubicación...';
+      if (!navigator.geolocation) {
+        window.open('https://www.google.com/maps/dir/Nuevo+Laredo+Tamaulipas/' + encodeURIComponent(destino), '_blank');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function(p) {
+          st.textContent = '✅ Abriendo navegación...';
+          window.open('https://www.google.com/maps/dir/' + p.coords.latitude + ',' + p.coords.longitude + '/' + encodeURIComponent(destino), '_blank');
+        },
+        function() {
+          st.textContent = '⚠️ Sin GPS · Abriendo desde NLD...';
+          window.open('https://www.google.com/maps/dir/Nuevo+Laredo+Tamaulipas/' + encodeURIComponent(destino), '_blank');
+        },
+        { timeout: 8000 }
+      );
+    }
+
+    function buscarCerca(tipo) {
+      var st = document.getElementById('gpsStatus');
+      st.textContent = '📍 Obteniendo ubicación...';
+      if (!navigator.geolocation) {
+        window.open('https://www.google.com/maps/search/' + encodeURIComponent(tipo), '_blank');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function(p) {
+          st.textContent = '✅ Buscando cerca de ti...';
+          window.open('https://www.google.com/maps/search/' + encodeURIComponent(tipo) + '/@' + p.coords.latitude + ',' + p.coords.longitude + ',13z', '_blank');
+        },
+        function() {
+          st.textContent = '⚠️ Sin GPS · Búsqueda general';
+          window.open('https://www.google.com/maps/search/' + encodeURIComponent(tipo), '_blank');
+        },
+        { timeout: 8000 }
+      );
+    }
+
+    var ciudades = {
+      'nld':  { nombre: 'NVO LAREDO / LAREDO TX', query: 'Nuevo+Laredo,Mexico' },
+      'mty':  { nombre: 'MONTERREY NL',            query: 'Monterrey,Mexico' },
+      'mat':  { nombre: 'MATEHUALA SLP',            query: 'Matehuala,Mexico' },
+      'salt': { nombre: 'SALTILLO COAH',            query: 'Saltillo,Mexico' },
+      'col':  { nombre: 'COLOMBIA NL',              query: 'Colombia,Nuevo+Leon,Mexico' },
+      'ana':  { nombre: 'ANÁHUAC NL',               query: 'Anahuac,Nuevo+Leon,Mexico' },
+      'lamp': { nombre: 'LAMPAZOS NL',              query: 'Lampazos,Nuevo+Leon,Mexico' },
+      'sab':  { nombre: 'SABINAS COAH',             query: 'Sabinas,Coahuila,Mexico' },
+      'monc': { nombre: 'MONCLOVA COAH',            query: 'Monclova,Mexico' },
+      'apo':  { nombre: 'APODACA NL',               query: 'Apodaca,Nuevo+Leon,Mexico' },
+      'lrd':  { nombre: 'LAREDO TX',                query: 'Laredo,Texas' },
+      'sa':   { nombre: 'SAN ANTONIO TX',           query: 'San+Antonio,Texas' },
+      'hou':  { nombre: 'HOUSTON TX',               query: 'Houston,Texas' },
+      'dal':  { nombre: 'DALLAS TX',                query: 'Dallas,Texas' }
+    };
+
+    async function cargarClima(clave) {
+      var ciudad = ciudades[clave];
+      document.getElementById('clima-ciudad-nombre').textContent = ciudad.nombre;
+      document.getElementById('clima-loading').style.display = 'block';
+      document.getElementById('clima-data').style.display = 'none';
+      document.getElementById('clima-error').style.display = 'none';
+      try {
+        var res = await fetch('https://wttr.in/' + ciudad.query + '?format=j1');
+        var data = await res.json();
+        var cur = data.current_condition[0];
+        var hoy = data.weather[0];
+        document.getElementById('clima-temp').textContent = cur.temp_C + '°C';
+        document.getElementById('clima-desc').textContent = cur.lang_es ? cur.lang_es[0].value : cur.weatherDesc[0].value;
+        document.getElementById('clima-viento').textContent = '💨 Viento: ' + cur.windspeedKmph + ' km/h';
+        document.getElementById('clima-humedad').textContent = '💧 Humedad: ' + cur.humidity + '%';
+        document.getElementById('clima-max').textContent = 'MAX: ' + hoy.maxtempC + '°C';
+        document.getElementById('clima-min').textContent = 'MIN: ' + hoy.mintempC + '°C';
+        document.getElementById('clima-loading').style.display = 'none';
+        document.getElementById('clima-data').style.display = 'block';
+      } catch(e) {
+        document.getElementById('clima-loading').style.display = 'none';
+        document.getElementById('clima-error').style.display = 'block';
+      }
+    }
+
+    function setClima(el, ciudad) {
+      document.querySelectorAll('.ciudad-chip').forEach(function(c) { c.classList.remove('active'); });
+      el.classList.add('active');
+      cargarClima(ciudad);
+    }
+
+    function calcular() {
+      var monto = parseFloat(document.getElementById('monto').value) || 0;
+      var diesel = parseFloat(document.getElementById('diesel').value) || 0;
+      var casetas = parseFloat(document.getElementById('casetas').value) || 0;
+      var km = parseFloat(document.getElementById('km').value) || 0;
+      var rend = parseFloat(document.getElementById('rend').value) || 0;
+      if (monto <= 0) { alert('Ingresa el monto del viaje.'); return; }
+      var gastos = diesel + casetas;
+      var ganancia = monto - gastos;
+      var color = ganancia >= 0 ? '#2ecc71' : '#e50914';
+      var extra = km > 0 && rend > 0 ? '⛽ Litros: <strong>' + (km/rend).toFixed(1) + ' L</strong><br>' : '';
+      var res = document.getElementById('calcResult');
+      res.innerHTML = extra + '💸 Gastos: <strong>$' + gastos.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</strong><br>💰 Ganancia: <strong style="color:' + color + ';font-size:17px;">$' + ganancia.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</strong>';
+      res.classList.add('show');
+    }
+
+    var GEMINI_KEY = "";
+    var PROMPT_JIMENA = "Eres Jimena, una trailera veterana de Nuevo Laredo que trabaja para L-3 Logística. Hablas con jerga amigable de camionero. Ayudas con: tráfico en rutas NLD→Monterrey, NLD→Matehuala, Laredo TX→San Antonio/Houston/Dallas, tiempos en puentes internacionales, clima en ruta, consejos de diesel, casetas, descanso, mecánica básica, aduana México-USA, cálculo de ganancias. Responde en español, breve y directo. Usa emojis de camiones 🚛.";
+
+    function agregarMensajeIA(rol, texto) {
+      var msgs = document.getElementById('iaMessages');
+      var div = document.createElement('div');
+      div.className = rol === 'user' ? 'mensaje-usuario' : 'mensaje-ia';
+      div.textContent = texto;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      return div;
+    }
+
+    async function enviarIA() {
+      var input = document.getElementById('iaInput');
+      var btn = document.getElementById('iaBtn');
+      var msg = input.value.trim();
+      if (!msg) return;
+      agregarMensajeIA('user', msg);
+      input.value = '';
+      agregarMensajeIA('ia', '🚛 Jimena estará disponible muy pronto. Estamos trabajando en ello.');
+    }
+
+    document.getElementById('iaInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') enviarIA();
+    });
+
+    document.getElementById('traileroInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { if(window.enviarTraileroFB) window.enviarTraileroFB(); }
+    });
+
+    // NOTAS
+    function guardarNota() {
+      var titulo = document.getElementById('notaTitulo').value.trim();
+      var texto = document.getElementById('notaTexto').value.trim();
+      if (!titulo && !texto) { alert('Escribe algo primero.'); return; }
+      var notas = JSON.parse(localStorage.getItem('l3_notas') || '[]');
+      notas.unshift({
+        titulo: titulo || 'Sin título',
+        texto: texto,
+        fecha: new Date().toLocaleString('es-MX', {dateStyle:'short', timeStyle:'short'})
+      });
+      localStorage.setItem('l3_notas', JSON.stringify(notas));
+      document.getElementById('notaTitulo').value = '';
+      document.getElementById('notaTexto').value = '';
+      renderNotas();
+    }
+
+    function borrarNota(i) {
+      var notas = JSON.parse(localStorage.getItem('l3_notas') || '[]');
+      notas.splice(i, 1);
+      localStorage.setItem('l3_notas', JSON.stringify(notas));
+      renderNotas();
+    }
+
+    function renderNotas() {
+      var notas = JSON.parse(localStorage.getItem('l3_notas') || '[]');
+      var lista = document.getElementById('listaNotas');
+      if (notas.length === 0) {
+        lista.innerHTML = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;padding:20px;">No hay notas guardadas</div>';
+        return;
+      }
+      lista.innerHTML = notas.map(function(n, i) {
+        return '<div class="card" style="flex-direction:column;gap:6px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<div style="font-weight:700;font-size:13px;">📌 ' + n.titulo + '</div>' +
+          '<button onclick="borrarNota(' + i + ')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;">🗑️</button>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + n.texto + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;">' + n.fecha + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+
+    window.addEventListener('load', function() {
+      agregarMensajeIA('ia', '¡Qué onda colega! Aquí Jimena en la frecuencia de L-3. ¿Cómo viene el camino? 🚛');
+      cargarClima('nld');
+      renderNotas();
+    });
+  </script>
+</body>
+</html>
