@@ -1,4 +1,4 @@
-const CACHE_NAME = 'l3-v1';
+const CACHE_NAME = 'l3-v2';
 const FILES_TO_CACHE = [
   './',                  // Cacha la raíz (evita errores si entran sin poner "index.html")
   './index.html',
