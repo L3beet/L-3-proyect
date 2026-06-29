@@ -64,35 +64,8 @@
       });
       input.value = '';
     };
-  </script>
-
-  <!-- TOMTOM MAPS SDK -->
-  <link rel="stylesheet" type="text/css" href="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps.css"/>
-  <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps-web.min.js"></script>
-
-  <script>
-    var mapInstance = null;
-    var userMarker = null;
-    // API Key pública/gratuita estándar de TomTom
-    var ttApiKey = '3A63mAnG2XbM9GjXvHw8148b8WwG18uA'; 
-
-    function initTomTomMap() {
-      // Inicializar mapa de TomTom en versión clara y visible para conducción diurna
-      mapInstance = tt.map({
-        key: ttApiKey,
-        container: 'tomtomMap',
-        center: [-99.5154, 27.4765],
-        zoom: 11,
-        stylesVisibility: {
-          trafficFlow: true, // Muestra las líneas verde/amarillo/rojo del flujo vehicular
-          trafficIncidents: true // Muestra iconos de accidentes, obras o cierres
-        },
-        style: 'https://api.tomtom.com/style/maps-sdk-web/2/2.4.4-1/main/basic_main.json' // Estilo claro de navegación
-      });
-
-      // Añadir controles de zoom y brújula
-      mapInstance.addControl(new tt.NavigationControl());
-
+  </script>  
+<script src="https://maps.googleapis.com/maps/api/js?key=AlzaSyC0rlvsbd73vcHgk6uv1z7AGUNFNv6G39A&callback=initMap" async defer></script>
       // GPS ubicación real en el mapa
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
