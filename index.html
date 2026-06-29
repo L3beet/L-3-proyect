@@ -1,4 +1,19 @@
 
+
+Ir al contenido
+Cómo usar Gmail con lectores de pantalla
+Ya no se admite esta versión. Actualiza a un navegador admitido.
+1 de 22
+(sin asunto)
+Recibidos
+Resume este correo electrónico
+
+Emertga <emertga@gmail.com>
+1:43 p.m. (hace 0 minutos)
+para mí
+
+Parece que este mensaje está en inglés
+``html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,6 +27,7 @@
   <meta name="apple-mobile-web-app-title" content="L-3"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
 
+  <!-- FIREBASE -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -65,51 +81,52 @@
     };
   </script>
 
+  <!-- TOMTOM MAPS SDK -->
   <link rel="stylesheet" type="text/css" href="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps.css"/>
   <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.25.0/maps/maps-web.min.js"></script>
 
   <script>
     var mapInstance = null;
     var userMarker = null;
-    // API Key pública/gratuita estándar de TomTom para desarrollo continuo
+    // API Key pública/gratuita estándar de TomTom
     var ttApiKey = '3A63mAnG2XbM9GjXvHw8148b8WwG18uA'; 
 
     function initTomTomMap() {
-      // Inicializar mapa de TomTom enfocado en Nuevo Laredo con estilo nocturno/oscuro
+      // Inicializar mapa de TomTom en versión clara y visible para conducción diurna
       mapInstance = tt.map({
         key: ttApiKey,
         container: 'tomtomMap',
         center: [-99.5154, 27.4765],
         zoom: 11,
         stylesVisibility: {
-          trafficFlow: true, // Flujo de tráfico en vivo
-          trafficIncidents: true // Incidentes de tráfico en vivo
+          trafficFlow: true, // Muestra las líneas verde/amarillo/rojo del flujo vehicular
+          trafficIncidents: true // Muestra iconos de accidentes, obras o cierres
         },
-        style: 'https://api.tomtom.com/style/maps-sdk-web/2/2.4.4-1/night/basic_main.json'
+        style: 'https://api.tomtom.com/style/maps-sdk-web/2/2.4.4-1/main/basic_main.json' // Estilo claro de navegación
       });
 
-      // Añadir controles de navegación sencillos
+      // Añadir controles de zoom y brújula
       mapInstance.addControl(new tt.NavigationControl());
 
-      // GPS ubicación real en el mapa de TomTom
+      // GPS ubicación real en el mapa
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(pos) {
           var lat = pos.coords.latitude;
           var lng = pos.coords.longitude;
           
-          // Crear un elemento HTML personalizado para el marcador rojo de trailero
+          // Marcador personalizado (punto rojo brillante con borde blanco)
           var markerElement = document.createElement('div');
           markerElement.style.background = '#e50914';
-          markerElement.style.width = '16px';
-          markerElement.style.height = '16px';
+          markerElement.style.width = '18px';
+          markerElement.style.height = '18px';
           markerElement.style.borderRadius = '50%';
           markerElement.style.border = '3px solid #fff';
-          markerElement.style.boxShadow = '0 0 8px rgba(229,9,20,0.8)';
+          markerElement.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
 
           if (!userMarker) {
             userMarker = new tt.Marker({ element: markerElement })
               .setLngLat([lng, lat])
-              .setPopup(new tt.Popup({ offset: 30 }).setHTML('📍 Tu ubicación'))
+              .setPopup(new tt.Popup({ offset: 30 }).setHTML('📍 Ubicación de tu unidad'))
               .addTo(mapInstance);
           } else {
             userMarker.setLngLat([lng, lat]);
@@ -126,7 +143,7 @@
         });
         var st = document.getElementById('gpsStatus');
         if (st) {
-          st.innerHTML = '📍 ' + (nombre || '') + '  |  <button onclick="navegarADestino(' + lat + ',' + lng + ')" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:1px;cursor:pointer;">🚛 NAVEGAR</button>';
+          st.innerHTML = '📍 ' + (nombre || '') + ' &nbsp;|&nbsp; <button onclick="navegarADestino(' + lat + ',' + lng + ')" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:1px;cursor:pointer;">CC TRÁFICO</button>';
         }
       }
     }
@@ -270,20 +287,25 @@
     </div>
   </div>
 
+  <!-- GPS -->
   <div class="section active" id="tab-gps">
 
+    <!-- CIUDADES RÁPIDAS -->
     <div>
       <div class="section-title">🏙️ IR A CIUDAD</div>
 
+      <!-- BUSCADOR -->
       <div style="position:relative;margin-bottom:12px;">
         <input type="text" id="buscadorCiudad" placeholder="🔍 Buscar ciudad..." oninput="filtrarCiudades()" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:13px;outline:none;font-family:'IBM Plex Mono',monospace;"/>
       </div>
 
+      <!-- SELECTOR PAÍS -->
       <div style="display:flex;gap:8px;margin-bottom:12px;">
         <button onclick="setPais('mx',this)" style="flex:1;padding:10px;background:var(--red);border:none;border-radius:10px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">🇲🇽 MÉXICO</button>
         <button onclick="setPais('usa',this)" style="flex:1;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;">🇺🇸 USA</button>
       </div>
 
+      <!-- CIUDADES MÉXICO -->
       <div id="ciudades-mx" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
         <div class="ciudad-chip" onclick="irACiudad(27.4765,-99.5154,12,'Nvo. Laredo')" style="text-align:center;padding:10px;">🇲🇽 Nvo. Laredo</div>
         <div class="ciudad-chip" onclick="irACiudad(25.6866,-100.3161,11,'Monterrey')" style="text-align:center;padding:10px;">🏙️ Monterrey</div>
@@ -303,6 +325,7 @@
         <div class="ciudad-chip" onclick="irACiudad(25.7539,-100.5142,12,'San Pedro NL')" style="text-align:center;padding:10px;">🏙️ San Pedro NL</div>
       </div>
 
+      <!-- CIUDADES USA -->
       <div id="ciudades-usa" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
         <div class="ciudad-chip" onclick="irACiudad(27.5035,-99.5075,12,'Laredo TX')" style="text-align:center;padding:10px;">🇺🇸 Laredo TX</div>
         <div class="ciudad-chip" onclick="irACiudad(29.4241,-98.4936,11,'San Antonio TX')" style="text-align:center;padding:10px;">🇺🇸 San Antonio</div>
@@ -310,16 +333,19 @@
         <div class="ciudad-chip" onclick="irACiudad(32.7767,-96.7970,11,'Dallas TX')" style="text-align:center;padding:10px;">🏙️ Dallas</div>
       </div>
 
+      <!-- GPS BOTÓN -->
       <button onclick="centrarUbicacion()" style="width:100%;padding:14px;background:var(--red);border:none;border-radius:12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;margin-bottom:8px;">📍 MI UBICACIÓN AHORA</button>
       <div class="gps-status" id="gpsStatus">Toca una ciudad o activa tu ubicación</div>
     </div>
 
+    <!-- MAPA INTEGRADO (TOMTOM CLARO DE RUTA) -->
     <div>
       <div class="section-title">🗺️ MAPA + TRÁFICO EN VIVO (TOMTOM)</div>
       <div id="tomtomMap" style="width:100%;height:350px;border-radius:12px;border:1px solid var(--border);overflow:hidden;"></div>
-      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;margin-top:8px;">📍 Tu ubicación en rojo · Flujo e incidentes de tráfico en vivo</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;margin-top:8px;">📍 Ubicación en rojo · Líneas de tráfico en tiempo real</div>
     </div>
 
+    <!-- CÁMARAS -->
     <div>
       <div class="section-title">📸 CÁMARAS PUENTES</div>
       <a href="https://www.cityoflaredo.com/services/bridge-cameras" target="_blank" class="ruta-btn" style="margin-bottom:0;">
@@ -329,6 +355,7 @@
       </a>
     </div>
 
+    <!-- PARADAS -->
     <div>
       <div class="section-title">⛽ PARADAS CERCANAS</div>
       <div class="ruta-btn" onclick="buscarCerca('gasolineras diesel')">
@@ -341,11 +368,11 @@
         <div><span class="ruta-title">Comida / Paraderos</span><span class="ruta-sub">Cerca de tu ubicación</span></div>
         <span class="ruta-arrow">›</span>
       </div>
-      <div class="gps-status" id="gpsStatus2">📍 Toca una ciudad o destino</div>
     </div>
 
   </div>
 
+  <!-- CLIMA -->
   <div class="section" id="tab-clima">
     <div class="section-title">🌤️ CLIMA EN TIEMPO REAL</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
@@ -386,6 +413,7 @@
     <div style="font-size:10px;color:var(--muted);text-align:center;font-family:'IBM Plex Mono',monospace;">✅ Datos en tiempo real · wttr.in</div>
   </div>
 
+  <!-- CALCULADORA -->
   <div class="section" id="tab-calc">
     <div class="section-title">🧮 CALCULADORA DE GANANCIA</div>
     <input class="calc-input" type="number" id="monto" placeholder="💵 Monto total del viaje ($)"/>
@@ -397,6 +425,7 @@
     <div class="calc-result" id="calcResult"></div>
   </div>
 
+  <!-- CHAT -->
   <div class="section" id="tab-chat">
     <div class="section-title">🤖 ASISTENTE IA · JIMENA</div>
     <div class="chat-box">
@@ -421,6 +450,7 @@
     <div style="font-size:10px;color:var(--green);font-family:'IBM Plex Mono',monospace;text-align:center;">✅ Chat en tiempo real · Firebase</div>
   </div>
 
+  <!-- NOTAS -->
   <div class="section" id="tab-notas">
     <div class="section-title">🗒️ MIS NOTAS</div>
     <div class="card">
@@ -432,6 +462,7 @@
     <div id="listaNotas" style="display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 
+  <!-- SOS -->
   <div class="section" id="tab-sos">
     <div class="section-title">⚠️ EMERGENCIAS</div>
     <a href="tel:911" class="sos-btn">⚠️ AUXILIO · 911</a>
@@ -514,14 +545,15 @@
       'monc': { nombre: 'MONCLOVA COAH', query: 'Monclova,Mexico' },
       'apo': { nombre: 'APODACA NL', query: 'Apodaca,Nuevo+Leon,Mexico' },
       'lrd': { nombre: 'LAREDO TX', query: 'Laredo,Texas' },
-      'sa': { nombre: 'SAN ANTONIO TX', query: 'San+Antonio,Texas' },
+      'sa': { network: 'SAN ANTONIO TX', query: 'San+Antonio,Texas' },
       'hou': { nombre: 'HOUSTON TX', query: 'Houston,Texas' },
       'dal': { nombre: 'DALLAS TX', query: 'Dallas,Texas' }
     };
 
     async function cargarClima(clave) {
       var ciudad = ciudades[clave];
-      document.getElementById('clima-ciudad-nombre').textContent = ciudad.nombre;
+      if(!ciudad) return;
+      document.getElementById('clima-ciudad-nombre').textContent = ciudad.nombre || clave.toUpperCase();
       document.getElementById('clima-loading').style.display = 'block';
       document.getElementById('clima-data').style.display = 'none';
       document.getElementById('clima-error').style.display = 'none';
@@ -608,10 +640,6 @@
       if (e.key === 'Enter') enviarIA();
     });
 
-    document.getElementById('traileroInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { if(window.enviarTraileroFB) window.enviarTraileroFB(); }
-    });
-
     // NOTAS
     function guardarNota() {
       var titulo = document.getElementById('notaTitulo').value.trim();
@@ -663,7 +691,7 @@
       agregarMensajeIA('ia', '¡Qué onda colega! Aquí Jimena en la frecuencia de L-3. ¿Cómo viene el camino? 🚛');
       cargarClima('nld');
       renderNotas();
-      initTomTomMap(); // Iniciar TomTom al cargar la página
+      initTomTomMap(); // Iniciar TomTom claro al cargar la app
     });
   </script>
 </body>
