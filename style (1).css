@@ -1,0 +1,364 @@
+/* ═══════════════════════════════════════════
+   L-3 LOGÍSTICA — Estilos principales
+   ═══════════════════════════════════════════ */
+
+:root {
+  --red:    #e50914;
+  --dark:   #0d0d0d;
+  --card:   #262626;
+  --border: #333;
+  --text:   #ffffff;
+  --muted:  #888;
+  --green:  #2ecc71;
+  --yellow: #f1c40f;
+  --accent: #f5a623;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--dark);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Header ── */
+.header {
+  width: 100%;
+  background: #000;
+  border-bottom: 2px solid var(--red);
+  padding: 12px 20px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 500;
+}
+.header h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 3px;
+}
+.header h1 span { color: var(--red); }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: #000;
+  border-top: 2px solid var(--red);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 600;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 6px 0;
+  gap: 2px;
+  border-top: 2px solid transparent;
+  transition: all 0.2s;
+}
+.nav-item.active { border-top-color: var(--red); }
+.nav-icon { font-size: 20px; line-height: 1; }
+.nav-label {
+  font-size: 9px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--muted);
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.nav-item.active .nav-label { color: var(--red); }
+
+/* ── Sections ── */
+.section {
+  display: none;
+  width: 100%;
+  max-width: 480px;
+  padding: 14px;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 80px; /* espacio para el nav de abajo */
+}
+.section.active { display: flex; animation: fade 0.3s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+}
+.section-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--red);
+  margin: 4px 0 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+
+/* ── Ruta buttons ── */
+.ruta-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.ruta-btn::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--red);
+  transform: scaleY(0);
+  transition: transform 0.18s;
+}
+.ruta-btn:active::before { transform: scaleY(1); }
+.ruta-btn:active { border-color: var(--red); }
+.ruta-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+.ruta-title { font-size: 14px; font-weight: 700; display: block; }
+.ruta-sub { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+.ruta-arrow { margin-left: auto; color: var(--muted); }
+
+/* ── GPS ── */
+.gps-status {
+  font-size: 10px;
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace;
+  text-align: center;
+  padding: 6px;
+}
+.ciudad-chip {
+  padding: 7px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ciudad-chip.active { border-color: var(--red); color: var(--red); }
+
+/* ── Calculadora ── */
+.calc-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  outline: none;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.calc-input:focus { border-color: var(--red); }
+.calc-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--red);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.calc-result {
+  display: none;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 2;
+}
+.calc-result.show { display: block; }
+
+/* ── Chat / Jimena ── */
+.chat-box {
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
+.mensaje-usuario {
+  align-self: flex-end;
+  background: var(--red);
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 15px 15px 0 15px;
+  max-width: 85%;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.mensaje-ia {
+  align-self: flex-start;
+  background: #333;
+  color: #eee;
+  padding: 10px 15px;
+  border-radius: 15px 15px 15px 0;
+  max-width: 85%;
+  font-size: 13px;
+  line-height: 1.4;
+  border-left: 3px solid var(--red);
+}
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+.chat-input {
+  flex: 1;
+  background: #222;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  padding: 10px 16px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--red); }
+.chat-send {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.chat-send:disabled { opacity: 0.5; }
+
+/* ── Chat traileros ── */
+.trailero-box {
+  background: var(--dark);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+.trailero-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tmsg {
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  max-width: 85%;
+  line-height: 1.4;
+}
+.tmsg.otro {
+  background: var(--card);
+  border: 1px solid var(--border);
+  align-self: flex-start;
+  border-radius: 4px 10px 10px 10px;
+}
+.tmsg.yo {
+  background: var(--red);
+  color: #fff;
+  align-self: flex-end;
+  border-radius: 10px 4px 10px 10px;
+}
+.tmsg-name {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 3px;
+}
+
+/* ── SOS ── */
+.sos-btn {
+  display: block;
+  width: 100%;
+  padding: 22px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 3px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  animation: glow 2s infinite;
+  margin-bottom: 12px;
+}
+@keyframes glow {
+  0%   { box-shadow: 0 0 0 0 rgba(229,9,20,0.6); }
+  70%  { box-shadow: 0 0 0 14px rgba(229,9,20,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229,9,20,0); }
+}
+
+/* ── Footer ── */
+.footer-txt {
+  padding: 20px 16px;
+  font-size: 10px;
+  color: #444;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* ── Mover zoom de Leaflet abajo izquierda ── */
+.leaflet-top.leaflet-left { top: auto !important; bottom: 12px !important; }
+.leaflet-control-zoom { margin: 0 0 0 12px !important; }
+@keyframes pulse-voz {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+#vozIndicador { animation: pulse-voz 1s infinite; }
