@@ -5,7 +5,7 @@ var CACHE_VERSION = 'l3-v1.4';
 var ARCHIVOS_CACHE = [
   './',
   './index.html',
-  './style.css',
+  './styles.css',
   './app.js',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap',
