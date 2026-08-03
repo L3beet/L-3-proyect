@@ -491,23 +491,32 @@ async function cargarClimaOverlay(lat,lng,nombre) {
 }
 
 // Ruta HGV
-var WORLD_TRADE_BRIDGE={lat:27.5973,lng:-99.5371};
-var BORDER_LAT=27.50; // latitud aprox. del Río Bravo en Laredo/Nuevo Laredo
-function ladoFrontera(lat) {
-  return lat>=BORDER_LAT ? 'USA' : 'MX';
+   var WORLD_TRADE_BRIDGE={lat:27.5973,lng:-99.5371};
+var _paisCache={};
+async function paisDeCoordenada(lat,lng) {
+  var key=lat.toFixed(2)+','+lng.toFixed(2);
+  if(_paisCache[key]) return _paisCache[key];
+  try {
+    var r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=5',{headers:{'Accept-Language':'es'}});
+    var d=await r.json();
+    var pais=(d.address&&d.address.country_code)?d.address.country_code.toUpperCase():null;
+    _paisCache[key]=pais; return pais;
+  } catch(e){ return null; }
 }
-function esCrossBorder(oLat,oLng,dLat,dLng) {
-  return ladoFrontera(oLat) !== ladoFrontera(dLat);
+async function esCrossBorder(oLat,oLng,dLat,dLng) {
+  var pO=await paisDeCoordenada(oLat,oLng), pD=await paisDeCoordenada(dLat,dLng);
+  if(!pO||!pD) return false;
+  return pO!==pD;
 }
-function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
+async function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
   var st=document.getElementById('gpsStatus'); st.textContent='🚛 Calculando ruta para camión pesado...';
   if(!navigator.geolocation){st.textContent='⚠️ Activa el GPS';return;}
-  navigator.geolocation.getCurrentPosition(function(pos){
+  navigator.geolocation.getCurrentPosition(async function(pos){
     var oLat=pos.coords.latitude, oLng=pos.coords.longitude;
     var coords=[[oLng,oLat],[destLng,destLat]];
-    if(esCrossBorder(oLat,oLng,destLat,destLng)) coords=[[oLng,oLat],[WORLD_TRADE_BRIDGE.lng,WORLD_TRADE_BRIDGE.lat],[destLng,destLat]];
-    fetch('https://api.openrouteservice.org/v2/directions/driving-hgv/geojson',{
-      method:'POST', headers:{'Authorization':ORS_KEY,'Content-Type':'application/json'},
+    var cruza=await esCrossBorder(oLat,oLng,destLat,destLng);
+    if(cruza) coords=[[oLng,oLat],[WORLD_TRADE_BRIDGE.lng,WORLD_TRADE_BRIDGE.lat],[destLng,destLat]];
+    fetch('https://api.openrouteservice.org/v2/directions/driving-hgv/geojson',{   method:'POST', headers:{'Authorization':ORS_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({coordinates:coords,options:{vehicle_type:'hgv',profile_params:{restrictions:{height:4.5,width:2.6,weight:40,axleload:11.5}}},instructions:false})
     }).then(function(r){return r.json();}).then(function(data){
       if(!data.features||!data.features.length){st.textContent='⚠️ No se encontró ruta para camión';return;}
