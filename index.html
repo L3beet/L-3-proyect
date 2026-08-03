@@ -73,6 +73,8 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); color:
 .chip-rapido:active { border-color: var(--red); color: var(--red); }
 .leaflet-top.leaflet-left { top: auto !important; bottom: 12px !important; }
 .leaflet-control-zoom { margin: 0 0 0 12px !important; }
+#googleMap { transition: transform 0.35s linear; transform-origin: center center; }
+.modo-conduccion .leaflet-control-zoom { display: none !important; }
 @keyframes pulse-voz { 0%,100%{opacity:1;}50%{opacity:0.4;} }
 #vozIndicador { animation: pulse-voz 1s infinite; }
 </style>
@@ -325,6 +327,7 @@ function showTab(name, el) {
 // ═══════════════════════════════════════
 var mapInstance=null, userMarker=null, destinoMarker=null, rutaLine=null;
 var reportando=false, followMode=false, watchId=null;
+var modoConduccion=false, ultimaPosGPS=null;
 var mapaOscuro=true, tileLayer=null;
 var ORS_KEY="eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjU1YjJhNTM5ZGY2ODRjMDFhOTUwOTBlMjI4OWE3ZmRjIiwiaCI6Im11cm11cjY0In0=";
 var PELIGRO_CFG = {
@@ -333,6 +336,20 @@ var PELIGRO_CFG = {
   bascula:          {icon:'⚖️',color:'#3498db',label:'Báscula / inspección'},
   peligro:          {icon:'⚠️',color:'#e67e22',label:'Peligro / accidente'}
 };
+
+function calcularBearing(lat1,lng1,lat2,lng2){
+  var f1=lat1*Math.PI/180, f2=lat2*Math.PI/180, dl=(lng2-lng1)*Math.PI/180;
+  var y=Math.sin(dl)*Math.cos(f2);
+  var x=Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function puntoAdelante(lat,lng,bearingDeg,distM){
+  var R=6371000, d=distM/R, th=bearingDeg*Math.PI/180;
+  var f1=lat*Math.PI/180, l1=lng*Math.PI/180;
+  var f2=Math.asin(Math.sin(f1)*Math.cos(d)+Math.cos(f1)*Math.sin(d)*Math.cos(th));
+  var l2=l1+Math.atan2(Math.sin(th)*Math.sin(d)*Math.cos(f1),Math.cos(d)-Math.sin(f1)*Math.sin(f2));
+  return {lat:f2*180/Math.PI, lng:l2*180/Math.PI};
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   if(location.protocol!=='https:' && location.hostname!=='localhost')
@@ -356,7 +373,21 @@ function initMap() {
         var icon=L.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:#e50914;border:3px solid #fff;box-shadow:0 0 0 4px rgba(229,9,20,0.35);"></div>',iconSize:[18,18],iconAnchor:[9,9]});
         userMarker=L.marker([lat,lng],{icon:icon}).addTo(mapInstance);
       } else { userMarker.setLatLng([lat,lng]); }
-      if(followMode) mapInstance.setView([lat,lng],mapInstance.getZoom());
+
+      if(modoConduccion) {
+        var rumbo = (pos.coords.heading!=null && !isNaN(pos.coords.heading)) ? pos.coords.heading : null;
+        if(rumbo===null && ultimaPosGPS) rumbo = calcularBearing(ultimaPosGPS.lat,ultimaPosGPS.lng,lat,lng);
+        if(rumbo!==null) {
+          document.getElementById('googleMap').style.transform='rotate('+(-rumbo)+'deg)';
+          var ad=puntoAdelante(lat,lng,rumbo,60);
+          mapInstance.setView([ad.lat,ad.lng],17,{animate:true});
+        } else {
+          mapInstance.setView([lat,lng],17,{animate:true});
+        }
+        ultimaPosGPS={lat:lat,lng:lng};
+      } else if(followMode) {
+        mapInstance.setView([lat,lng],mapInstance.getZoom());
+      }
     },function(err){
       var st=document.getElementById('gpsStatus');
       if(st && err.code===1) st.textContent='❌ Permisos de GPS denegados — actívalos en tu celular';
@@ -461,8 +492,12 @@ async function cargarClimaOverlay(lat,lng,nombre) {
 
 // Ruta HGV
 var WORLD_TRADE_BRIDGE={lat:27.5973,lng:-99.5371};
+var BORDER_LAT=27.50; // latitud aprox. del Río Bravo en Laredo/Nuevo Laredo
+function ladoFrontera(lat) {
+  return lat>=BORDER_LAT ? 'USA' : 'MX';
+}
 function esCrossBorder(oLat,oLng,dLat,dLng) {
-  return (oLat<27.58 && dLat>27.49 && dLng>-100 && dLng<-98) || (dLat<27.58 && oLat>27.49 && oLng>-100 && oLng<-98);
+  return ladoFrontera(oLat) !== ladoFrontera(dLat);
 }
 function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
   var st=document.getElementById('gpsStatus'); st.textContent='🚛 Calculando ruta para camión pesado...';
@@ -497,6 +532,8 @@ function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
 var viajeActivo=false, viajeTimer=null, viajeSegundos=0;
 function iniciarModoViaje(destino,km,tiempo) {
   viajeActivo=true; viajeSegundos=0;
+  modoConduccion=true; ultimaPosGPS=null;
+  document.getElementById('googleMap').classList.add('modo-conduccion');
   var panel=document.getElementById('panelViaje'); panel.style.display='block';
   document.getElementById('viajeDestino').textContent=destino||'Destino';
   document.getElementById('viajeKm').textContent=km+' km';
@@ -513,7 +550,9 @@ function iniciarModoViaje(destino,km,tiempo) {
   },1000);
 }
 function terminarViaje() {
-  viajeActivo=false; if(viajeTimer) clearInterval(viajeTimer);
+  viajeActivo=false; modoConduccion=false; if(viajeTimer) clearInterval(viajeTimer);
+  var gm=document.getElementById('googleMap');
+  gm.classList.remove('modo-conduccion'); gm.style.transform='rotate(0deg)';
   document.getElementById('panelViaje').style.display='none';
   if(rutaLine){mapInstance.removeLayer(rutaLine);rutaLine=null;}
   var st=document.getElementById('gpsStatus'); if(st){st.style.display='block';st.textContent='✅ Viaje terminado · Buen trabajo 🚛';}
