@@ -73,7 +73,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); color:
 .chip-rapido:active { border-color: var(--red); color: var(--red); }
 .leaflet-top.leaflet-left { top: auto !important; bottom: 12px !important; }
 .leaflet-control-zoom { margin: 0 0 0 12px !important; }
-#googleMap { transition: transform 0.35s linear; transform-origin: center center; }
+#googleMap { transition: transform 0.6s ease-out; transform-origin: center center; }
 .modo-conduccion .leaflet-control-zoom { display: none !important; }
 @keyframes pulse-voz { 0%,100%{opacity:1;}50%{opacity:0.4;} }
 #vozIndicador { animation: pulse-voz 1s infinite; }
@@ -206,6 +206,18 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: var(--dark); color:
         <button onclick="terminarViaje()" style="flex-shrink:0;padding:8px 12px;background:#e50914;border:none;border-radius:8px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:13px;cursor:pointer;">🏁</button>
       </div>
     </div>
+    <!-- Aviso rápido de precaución -->
+    <div id="avisoPrecaucion" style="display:none;position:absolute;top:106px;left:10px;right:10px;z-index:1500;background:rgba(26,10,0,0.96);border:1px solid #e67e22;border-radius:10px;padding:12px 14px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:22px;flex-shrink:0;">⚠️</span>
+        <div style="flex:1;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:#e67e22;letter-spacing:1px;">MANEJA CON PRECAUCIÓN</div>
+          <div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#ddd;line-height:1.4;margin-top:3px;">Los mapas pueden estar desactualizados. L-3 es una guía, no sustituye señalamientos oficiales ni tu criterio al volante.</div>
+        </div>
+        <button onclick="cerrarAvisoPrecaucion()" style="background:none;border:none;color:#e67e22;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1;">✕</button>
+      </div>
+    </div>
+
     <!-- Alertas en ruta -->
     <div id="panelPeligrosRuta" style="display:none;position:absolute;top:106px;right:10px;left:10px;z-index:1000;border-radius:10px;overflow:hidden;border:1px solid #e67e22;max-height:140px;overflow-y:auto;">
       <div style="background:rgba(26,10,0,0.95);padding:8px 12px;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;color:#e67e22;">⚠️ ALERTAS EN TU RUTA</div>
@@ -328,6 +340,18 @@ function showTab(name, el) {
 var mapInstance=null, userMarker=null, destinoMarker=null, rutaLine=null;
 var reportando=false, followMode=false, watchId=null;
 var modoConduccion=false, ultimaPosGPS=null;
+var rumboSuavizado=null, posSuavizada=null, rutaActual=null;
+function distanciaMetros(lat1,lng1,lat2,lng2){
+  var R=6371000, f1=lat1*Math.PI/180, f2=lat2*Math.PI/180;
+  var df=(lat2-lat1)*Math.PI/180, dl=(lng2-lng1)*Math.PI/180;
+  var a=Math.sin(df/2)*Math.sin(df/2)+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function anguloSuave(actual,nuevo,alpha){
+  if(actual===null) return nuevo;
+  var diff=((nuevo-actual+540)%360)-180;
+  return (actual+diff*alpha+360)%360;
+}
 var mapaOscuro=true, tileLayer=null;
 var ORS_KEY="eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjU1YjJhNTM5ZGY2ODRjMDFhOTUwOTBlMjI4OWE3ZmRjIiwiaCI6Im11cm11cjY0In0=";
 var PELIGRO_CFG = {
@@ -375,14 +399,19 @@ function initMap() {
       } else { userMarker.setLatLng([lat,lng]); }
 
       if(modoConduccion) {
-        var rumbo = (pos.coords.heading!=null && !isNaN(pos.coords.heading)) ? pos.coords.heading : null;
-        if(rumbo===null && ultimaPosGPS) rumbo = calcularBearing(ultimaPosGPS.lat,ultimaPosGPS.lng,lat,lng);
-        if(rumbo!==null) {
-          document.getElementById('googleMap').style.transform='rotate('+(-rumbo)+'deg)';
-          var ad=puntoAdelante(lat,lng,rumbo,60);
-          mapInstance.setView([ad.lat,ad.lng],17,{animate:true});
-        } else {
-          mapInstance.setView([lat,lng],17,{animate:true});
+        var rumboCrudo = (pos.coords.heading!=null && !isNaN(pos.coords.heading)) ? pos.coords.heading : null;
+        if(rumboCrudo===null && ultimaPosGPS) rumboCrudo = calcularBearing(ultimaPosGPS.lat,ultimaPosGPS.lng,lat,lng);
+        if(rumboCrudo!==null) {
+          rumboSuavizado = anguloSuave(rumboSuavizado, rumboCrudo, 0.3);
+          document.getElementById('googleMap').style.transform='rotate('+(-rumboSuavizado)+'deg)';
+          var ad=puntoAdelante(lat,lng,rumboSuavizado,60);
+          if(!posSuavizada || distanciaMetros(posSuavizada.lat,posSuavizada.lng,ad.lat,ad.lng)>4) {
+            mapInstance.setView([ad.lat,ad.lng],17,{animate:true,duration:0.6});
+            posSuavizada={lat:ad.lat,lng:ad.lng};
+          }
+        } else if(!posSuavizada || distanciaMetros(posSuavizada.lat,posSuavizada.lng,lat,lng)>4) {
+          mapInstance.setView([lat,lng],17,{animate:true,duration:0.6});
+          posSuavizada={lat:lat,lng:lng};
         }
         ultimaPosGPS={lat:lat,lng:lng};
       } else if(followMode) {
@@ -491,7 +520,7 @@ async function cargarClimaOverlay(lat,lng,nombre) {
 }
 
 // Ruta HGV
-   var WORLD_TRADE_BRIDGE={lat:27.5973,lng:-99.5371};
+var WORLD_TRADE_BRIDGE={lat:27.5973,lng:-99.5371};
 var _paisCache={};
 async function paisDeCoordenada(lat,lng) {
   var key=lat.toFixed(2)+','+lng.toFixed(2);
@@ -516,7 +545,8 @@ async function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
     var coords=[[oLng,oLat],[destLng,destLat]];
     var cruza=await esCrossBorder(oLat,oLng,destLat,destLng);
     if(cruza) coords=[[oLng,oLat],[WORLD_TRADE_BRIDGE.lng,WORLD_TRADE_BRIDGE.lat],[destLng,destLat]];
-    fetch('https://api.openrouteservice.org/v2/directions/driving-hgv/geojson',{   method:'POST', headers:{'Authorization':ORS_KEY,'Content-Type':'application/json'},
+    fetch('https://api.openrouteservice.org/v2/directions/driving-hgv/geojson',{
+      method:'POST', headers:{'Authorization':ORS_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({coordinates:coords,options:{vehicle_type:'hgv',profile_params:{restrictions:{height:4.5,width:2.6,weight:40,axleload:11.5}}},instructions:false})
     }).then(function(r){return r.json();}).then(function(data){
       if(!data.features||!data.features.length){st.textContent='⚠️ No se encontró ruta para camión';return;}
@@ -530,18 +560,37 @@ async function trazarRutaEnMapa(destLat,destLng,nombreDestino) {
       var horas=Math.floor(props.duration/3600);
       var mins=Math.round((props.duration%3600)/60);
       var tiempoStr=(horas>0?horas+'h ':'')+mins+'min';
-      st.innerHTML='🚛 '+km+' km · '+tiempoStr+' · '+(nombreDestino||'destino')+' <span style="color:#f1c40f;font-size:9px;">· HGV</span>';
-      iniciarModoViaje(nombreDestino,km,tiempoStr);
+      rutaActual={destino:nombreDestino,km:km,tiempo:tiempoStr};
+      st.innerHTML='🚛 '+km+' km · '+tiempoStr+' · '+(nombreDestino||'destino')+' <span style="color:#f1c40f;font-size:9px;">· HGV</span>'
+        +'<div style="display:flex;gap:6px;margin-top:6px;">'
+        +'<button onclick="verRutaCompleta()" style="flex:1;padding:8px;background:#333;border:1px solid #555;border-radius:8px;color:#fff;font-family:Bebas Neue,sans-serif;font-size:13px;cursor:pointer;">👁 VER RUTA</button>'
+        +'<button onclick="iniciarModoViaje(rutaActual.destino,rutaActual.km,rutaActual.tiempo)" style="flex:1;padding:8px;background:var(--red);border:none;border-radius:8px;color:#fff;font-family:Bebas Neue,sans-serif;font-size:13px;cursor:pointer;">▶ INICIAR VIAJE</button>'
+        +'</div>';
       peligrosEnRuta(puntos);
     }).catch(function(){st.textContent='⚠️ Error al calcular ruta';});
   },function(){st.textContent='⚠️ No se pudo obtener ubicación';},{timeout:10000,enableHighAccuracy:true});
+}
+
+function verRutaCompleta(){ if(rutaLine) mapInstance.fitBounds(rutaLine.getBounds(),{padding:[30,30]}); }
+
+var avisoTimeout=null;
+function mostrarAvisoPrecaucion() {
+  var av=document.getElementById('avisoPrecaucion'); if(!av)return;
+  av.style.display='block';
+  if(avisoTimeout) clearTimeout(avisoTimeout);
+  avisoTimeout=setTimeout(cerrarAvisoPrecaucion,6000);
+}
+function cerrarAvisoPrecaucion() {
+  var av=document.getElementById('avisoPrecaucion'); if(av) av.style.display='none';
+  if(avisoTimeout){ clearTimeout(avisoTimeout); avisoTimeout=null; }
 }
 
 // Modo viaje
 var viajeActivo=false, viajeTimer=null, viajeSegundos=0;
 function iniciarModoViaje(destino,km,tiempo) {
   viajeActivo=true; viajeSegundos=0;
-  modoConduccion=true; ultimaPosGPS=null;
+  modoConduccion=true; ultimaPosGPS=null; rumboSuavizado=null; posSuavizada=null;
+  mostrarAvisoPrecaucion();
   document.getElementById('googleMap').classList.add('modo-conduccion');
   var panel=document.getElementById('panelViaje'); panel.style.display='block';
   document.getElementById('viajeDestino').textContent=destino||'Destino';
