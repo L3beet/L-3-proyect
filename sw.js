@@ -1,4 +1,4 @@
-var CACHE_VERSION = 'l3-v2.0';
+var CACHE_VERSION = 'l3-v2.3';
 var ARCHIVOS_CACHE = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', function(e) {
